@@ -1,3 +1,44 @@
+<?php
+// Letakkan ini di BARIS PALING ATAS file index.php
+session_start();
+require_once 'config/database.php';
+
+// Inisialisasi variabel testimoni
+ $testimonials_data = array();
+ $has_db_connection = false;
+
+// Cek koneksi DB dan ambil data dinamis
+if(isset($conn)) {
+    $has_db_connection = true;
+    // Query menggabungkan tabel users dan testimonials, diurutkan terbaru
+    $sql = "SELECT t.message, t.job_title, u.full_name 
+            FROM testimonials t 
+            JOIN users u ON t.user_id = u.id 
+            ORDER BY t.created_at DESC";
+    $stmt = $conn->query($sql);
+    $testimonials_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Jika database kosong, gunakan data statis bawaan sebagai fallback agar desain tidak hancur
+if (empty($testimonials_data)) {
+    $testimonials_data = [
+        ['full_name' => 'Budi Santoso', 'job_title' => 'CEO, TechVision Indonesia', 'message' => 'NexaTech AI benar-benar mengubah cara kami bekerja. Solusi AI mereka sangat membantu meningkatkan efisiensi tim kami hingga 200%. Sangat direkomendasikan!'],
+        ['full_name' => 'Siti Aminah', 'job_title' => 'CTO, DataCorp', 'message' => 'Layanan Cloud Computing yang mereka tawarkan sangat stabil dan aman. Tim support juga sangat responsif. Terima kasih NexaTech!'],
+        ['full_name' => 'John Doe', 'job_title' => 'Founder, StartupHub', 'message' => 'Desain antarmuka yang sangat mudah digunakan. Kami tidak membutuhkan waktu lama untuk beradaptasi dengan sistem baru ini.']
+    ];
+    // Ubah flag agar tahu ini data default
+    $has_db_connection = false; 
+}
+
+// Fungsi helper untuk membuat avatar inisial
+function getInitials($name) {
+    $words = explode(' ', $name);
+    if(count($words) >= 2) {
+        return strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+    }
+    return strtoupper(substr($name, 0, 2));
+}
+?>
 <!doctype html>
 <html lang="id" data-bs-theme="dark">
   <head>
@@ -56,10 +97,13 @@
             </li>
           </ul>
           <div class="d-flex ms-lg-3 align-items-center gap-2">
-            <button class="btn btn-sm btn-outline-light rounded-circle" id="themeToggle" title="Ganti Tema">
-              <i class="fa-solid fa-moon"></i>
-            </button>
-            <a href="#contact" class="btn btn-primary-custom">Get Started</a>
+            <!-- GANTI kode tombol Get Started di NAVBAR dengan ini: -->
+<?php if(isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true): ?>
+    <span class="text-muted me-2 small d-none d-md-inline">Hi, <?= htmlspecialchars($_SESSION['user_name']) ?></span>
+    <a href="logout.php" class="btn btn-sm btn-outline-danger rounded-pill px-3">Logout</a>
+<?php else: ?>
+    <a href="login.php" class="btn btn-primary-custom">Get Started</a>
+<?php endif; ?>
           </div>
         </div>
       </div>
@@ -236,38 +280,43 @@
             <button type="button" data-bs-target="#testimonialCarousel" data-bs-slide-to="2" class="bg-primary"></button>
           </div>
           <div class="carousel-inner">
-            <!-- Testimoni 1 -->
-            <div class="carousel-item active">
-              <div class="glass-card p-5 mx-auto" style="max-width: 800px">
-                <div class="d-flex justify-content-center mb-4">
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" alt="Client 1" class="rounded-circle border border-3 border-primary" width="80" />
+             <?php 
+    $is_first = true;
+    foreach ($testimonials_data as $index => $t): 
+        $active_class = $is_first ? 'active' : '';
+        $is_first = false;
+        
+        // Jika data dari database, buat avatar inisial. Jika data default, pakai gambar Unsplash lama.
+        $avatar_html = '';
+        if ($has_db_connection) {
+            $initials = getInitials($t['full_name']);
+            $avatar_html = '<div class="d-flex justify-content-center mb-4">
+                <div class="rounded-circle border border-3 border-primary d-flex align-items-center justify-content-center text-white fw-bold" style="width:80px; height:80px; background: linear-gradient(135deg, #6366F1, #8B5CF6); font-size: 1.5rem;">
+                    '. $initials .'
                 </div>
-                <p class="text-center text-muted fs-5 fst-italic">"NexaTech AI benar-benar mengubah cara kami bekerja. Solusi AI mereka sangat membantu meningkatkan efisiensi tim kami hingga 200%. Sangat direkomendasikan!"</p>
-                <h5 class="text-center fw-bold mt-4">Budi Santoso</h5>
-                <p class="text-center text-primary">CEO, TechVision Indonesia</p>
-              </div>
-            </div>
-            <div class="carousel-item">
-              <div class="glass-card p-5 mx-auto" style="max-width: 800px">
-                <div class="d-flex justify-content-center mb-4">
-                  <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop" alt="Client 2" class="rounded-circle border border-3 border-primary" width="80" />
-                </div>
-                <p class="text-center text-muted fs-5 fst-italic">"Layanan Cloud Computing yang mereka tawarkan sangat stabil dan aman. Tim support juga sangat responsif. Terima kasih NexaTech!"</p>
-                <h5 class="text-center fw-bold mt-4">Siti Aminah</h5>
-                <p class="text-center text-primary">CTO, DataCorp</p>
-              </div>
-            </div>
-            <div class="carousel-item">
-              <div class="glass-card p-5 mx-auto" style="max-width: 800px">
-                <div class="d-flex justify-content-center mb-4">
-                  <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop" alt="Client 3" class="rounded-circle border border-3 border-primary" width="80" />
-                </div>
-                <p class="text-center text-muted fs-5 fst-italic">"Desain antarmuka yang sangat mudah digunakan. Kami tidak membutuhkan waktu lama untuk beradaptasi dengan sistem baru ini."</p>
-                <h5 class="text-center fw-bold mt-4">John Doe</h5>
-                <p class="text-center text-primary">Founder, StartupHub</p>
-              </div>
-            </div>
-          </div>
+            </div>';
+        } else {
+            // Gambar fallback untuk data statis awalan
+            $images = [
+                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
+                'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
+                'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop'
+            ];
+            $img_src = isset($images[$index]) ? $images[$index] : $images[0];
+            $avatar_html = '<div class="d-flex justify-content-center mb-4">
+                <img src="'. $img_src .'" alt="Client" class="rounded-circle border border-3 border-primary" width="80">
+            </div>';
+        }
+    ?>
+    <div class="carousel-item <?= $active_class ?>">
+        <div class="glass-card p-5 mx-auto" style="max-width: 800px;">
+            <?= $avatar_html ?>
+            <p class="text-center text-muted fs-5 fst-italic">"<?= htmlspecialchars($t['message']) ?>"</p>
+            <h5 class="text-center fw-bold mt-4"><?= htmlspecialchars($t['full_name']) ?></h5>
+            <p class="text-center text-primary"><?= htmlspecialchars($t['job_title']) ?></p>
+        </div>
+    </div>
+    <?php endforeach; ?>
           <button class="carousel-control-prev" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="prev">
             <span class="carousel-control-prev-icon bg-primary rounded-circle" aria-hidden="true"></span>
             <span class="visually-hidden">Previous</span>
@@ -277,6 +326,47 @@
             <span class="visually-hidden">Next</span>
           </button>
         </div>
+        <!-- Form Testimoni Dinamis -->
+<div class="row justify-content-center mt-5">
+    <div class="col-lg-6" data-aos="fade-up">
+        <?php if(isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true): ?>
+            <!-- Tampilkan Form jika sudah login -->
+            <div class="glass-card p-4 p-md-5">
+                <h5 class="fw-bold text-center mb-3">Kirim Testimoni Anda</h5>
+                
+                <?php if(isset($_SESSION['testimonial_success'])): ?>
+                    <div class="alert alert-success py-2 small text-center">
+                        <i class="fa-solid fa-check-circle me-2"></i><?= $_SESSION['testimonial_success'] ?>
+                    </div>
+                    <?php unset($_SESSION['testimonial_success']); ?>
+                <?php endif; ?>
+
+                <?php if(isset($_SESSION['testimonial_error'])): ?>
+                    <div class="alert alert-danger py-2 small text-center">
+                        <i class="fa-solid fa-circle-exclamation me-2"></i><?= $_SESSION['testimonial_error'] ?>
+                    </div>
+                    <?php unset($_SESSION['testimonial_error']); ?>
+                <?php endif; ?>
+
+                <form action="submit_testimonial.php" method="POST">
+                    <div class="mb-3">
+                        <input type="text" name="job_title" class="form-control bg-dark text-white border-secondary" placeholder="Pekerjaan / Jabatan Anda" required>
+                    </div>
+                    <div class="mb-3">
+                        <textarea name="message" class="form-control bg-dark text-white border-secondary" rows="4" placeholder="Tulis pengalaman Anda menggunakan layanan NexaTech AI..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary-custom w-100">Kirim Testimoni</button>
+                </form>
+            </div>
+        <?php else: ?>
+            <!-- Tampilkan tombol login jika belum login -->
+            <div class="glass-card p-4 text-center">
+                <p class="text-muted mb-3">Ingin memberikan testimoni?</p>
+                <a href="login.php" class="btn btn-outline-custom btn-sm">Login Terlebih Dahulu</a>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
       </div>
     </section>
 
